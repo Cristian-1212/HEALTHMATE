@@ -118,6 +118,18 @@ function handleInputFocus(el) {
   }
 }
 
+// ── DYNAMIC DATE DISPLAY ──
+function updateDynamicDates() {
+  const dateElements = document.querySelectorAll('.dynamic-date');
+  if (dateElements.length > 0) {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const todayStr = new Date().toLocaleDateString(undefined, options);
+    dateElements.forEach(el => el.textContent = todayStr);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', updateDynamicDates);
+
 document.addEventListener('focusin', (e) => {
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
     handleInputFocus(e.target);
