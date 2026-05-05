@@ -206,10 +206,9 @@
   // Intercept Login/Register Forms
   document.addEventListener('DOMContentLoaded', () => {
     const authForm = document.querySelector('.auth-form-wrap form');
-    if (!authForm) return;
+    if (!authForm || window.location.pathname.includes('reset')) return;
 
-    const path = window.location.pathname.toLowerCase();
-    const mode = path.includes('register') ? 'register' : 'login';
+    const mode = "{{ mode }}";
     console.log(`Firebase Auth initialized for ${mode} mode`);
 
     authForm.addEventListener('submit', async (e) => {
@@ -219,11 +218,13 @@
       const userField = authForm.querySelector('[name="username"]');
       const passField = authForm.querySelector('[name="password"]');
 
-      const email = (emailField ? emailField.value : userField?.value || '').trim();
+      // Firebase Auth requires an email format. 
+      // If the field name is 'username' in login, ensure the user enters their email there.
+      const email = (emailField ? emailField.value : (userField ? userField.value : '')).trim();
       const password = passField ? passField.value : '';
       const username = (userField ? userField.value : '').trim();
 
-      if (!email || !password) {
+      if (!email || !password || (mode === 'register' && !email.includes('@'))) {
         alert("Please enter both email and password.");
         return;
       }
@@ -250,7 +251,7 @@
             uid: userCredential.user.uid,
             email: userCredential.user.email,
             username: username || userCredential.user.email.split('@')[0],
-            mode: mode
+            mode: mode === 'register' ? 'register' : 'login'
           })
         });
 
