@@ -1,0 +1,34 @@
+{% extends "admin/base.html" %}
+{% block title %}Restore Database{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Restore Database</h1>
+        <p class="page-sub">Upload a .db file to restore the application database</p>
+    </div>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn-hm-outline">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="hm-card">
+            <h6 class="card-title mb-3">Upload Backup File</h6>
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="backupFile" class="form-label hm-label">Select .db file</label>
+                    <input class="form-control hm-input" type="file" id="backupFile" name="backup_file" accept=".db" required>
+                </div>
+                <button type="submit" class="btn-hm-primary mt-3">
+                    <i class="bi bi-upload me-1"></i> Restore Database
+                </button>
+            </form>
+            <div class="alert alert-warning mt-4 small">
+                <strong>Warning:</strong> Restoring the database will overwrite the current application data.
+                Ensure you have a recent backup before proceeding. This operation may require a manual application restart.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

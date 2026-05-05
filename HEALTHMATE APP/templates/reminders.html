@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}Reminders — HealthMate{% endblock %}
+
+{% block content %} 
+{% macro render_reminder(rem, paused=False) %}
+{% set type_colors = {
+  'meal':     ('#22C55E','#F0FDF4'),
+  'water':    ('#3B82F6','#EFF6FF'),
+  'activity': ('#8B5CF6','#F5F3FF'),
+  'medicine': ('#EF4444','#FEF2F2'),
+} %}
+{% set col, bg = type_colors.get(rem.reminder_type, ('#64748B','#F8FAFC')) %}
+<div class="rem-card {% if paused %}rem-card-paused{% endif %}" id="rem-{{ rem.id }}">
+  <div class="rc-left">
+    <div class="rc-icon" style="background:{{ bg }};color:{{ col }};">
+      {{ rem.type_icon }}
+    </div>
+    <div class="rc-info">
+      <div class="rc-label">{{ rem.label }}</div>
+      <div class="rc-meta">
+        <span class="rc-time">⏰ {{ rem.time_display }}</span>
+        <span class="rc-type" style="color:{{ col }};">{{ rem.reminder_type | title }}</span>
+        {% if rem.medicine_name %}
+          <span class="rc-med">💊 {{ rem.medicine_name }}{% if rem.dosage %} · {{ rem.dosage }}{% endif %}</span>
+        {% endif %}
+        {% if rem.interval > 0 %}
+          <span class="rc-repeat">⏱ Every {{ rem.interval }}h</span>
+        {% endif %}
+        {% if rem.repeat_times > 1 %}
+          <span class="rc-repeat">🔁 {{ rem.repeat_times }}× daily</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="rc-actions">
+    <!-- Toggle (pause/resume) -->
+    <button class="rc-toggle {% if rem.is_active %}rc-active{% else %}rc-paused{% endif %}"
+            onclick="toggleReminder({{ rem.id }}, this)"
+            title="{{ 'Pause' if rem.is_active else 'Resume' }}">
+      <i class="bi bi-{% if rem.is_active %}pause-circle{% else %}play-circle{% endif %}-fill"></i>
+    </button>
+    <!-- Delete -->
+    <form method="POST" action="{{ url_for('delete_reminder', rid=rem.id) }}"
+          style="display:inline;"
+          onsubmit="return confirm('Remove this reminder?')">
+      <button type="submit" class="rc-delete" title="Delete">
+        <i class="bi bi-trash3-fill"></i>
+      </button>
+    </form>
+  </div>
+</div>
+{% endmacro %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">🔔 Reminders</h1>
+    <p class="page-sub">{{ total }} total · {{ upcoming | length }} upcoming today</p>
+  </div>
+</div>
+
+<div class="reminders-layout">
+
+  <!-- LEFT: Add reminder form -->
+  <div class="rem-left">
+    <div class="hm-card">
+      <h6 class="card-title mb-4">➕ New Reminder</h6>
+
+      <form method="POST" action="{{ url_for('add_reminder') }}" id="reminderForm">
+
+        <!-- Type selector -->
+        <div class="hm-field">
+          <label class="hm-label">Reminder Type</label>
+          <div class="rem-type-grid">
+            {% for val, icon, label, color in [
+              ('meal',     '🍽', 'Meal',     '#22C55E'),
+              ('water',    '💧', 'Water',    '#3B82F6'),
+              ('activity', '🏃', 'Activity', '#8B5CF6'),
+              ('medicine', '💊', 'Medicine', '#EF4444'),
+            ] %}
+            <label class="rt-chip" style="--rt-color:{{ color }};">
+              <input type="radio" name="reminder_type" value="{{ val }}"
+                     class="visually-hidden rem-type-radio"
+                     {% if loop.first %}checked{% endif %}
+                     onchange="onTypeChange(this.value)"/>
+              <span class="rtc-icon">{{ icon }}</span>
+              <span class="rtc-label">{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Label -->
+        <div class="hm-field">
+          <label class="hm-label">Label / Note</label>
+          <input type="text" name="label" class="hm-input"
+                 placeholder="e.g. Take vitamins, Drink water" required/>
+        </div>
+
+        <!-- Time -->
+        <div class="hm-field">
+          <label class="hm-label">Time</label>
+          <div class="time-row">
+            <select name="hour" class="hm-select time-select">
+              {% for h in range(1, 13) %}
+              <option value="{{ h }}" {% if h==8 %}selected{% endif %}>{{ h }}</option>
+              {% endfor %}
+            </select>
+            <span class="time-colon">:</span>
+            <select name="minute" class="hm-select time-select">
+              {% for m in range(0, 60, 5) %}
+              <option value="{{ m }}" {% if m==0 %}selected{% endif %}>{{ '%02d'|format(m) }}</option>
+              {% endfor %}
+            </select>
+            <select name="ampm" class="hm-select ampm-select">
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Repeat -->
+        <div class="hm-field" id="standardRepeatSection">
+          <label class="hm-label">Repeat</label>
+          <div class="repeat-row">
+            {% for val, label in [('1','Once a day'),('2','Twice a day'),('3','Three times a day')] %}
+            <label class="rp-chip {% if loop.first %}selected{% endif %}">
+              <input type="radio" name="repeat_times" value="{{ val }}"
+                     class="visually-hidden"
+                     {% if loop.first %}checked{% endif %}/>
+              <span>{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Custom Schedule (Water) -->
+        <div id="customScheduleSection" style="display:none;">
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="hm-label">Interval</label>
+              <select name="interval_hours" class="hm-select">
+                <option value="1">Every 1 hour</option>
+                <option value="2">Every 2 hours</option>
+                <option value="3" selected>Every 3 hours</option>
+                <option value="4">Every 4 hours</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="hm-label">Repeats</label>
+              <select name="repeat_count" class="hm-select">
+                <option value="2">2 times</option>
+                <option value="4">4 times</option>
+                <option value="6" selected>6 times</option>
+                <option value="8">8 times</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Medicine section (shown only for medicine type) -->
+        <div id="medicineSection" style="display:none;">
+          <div class="hm-divider my-3"></div>
+          <div class="medicine-banner">
+            <i class="bi bi-capsule-pill"></i> Medicine Details
+          </div>
+          <div class="hm-field">
+            <label class="hm-label">Medicine Name</label>
+            <input type="text" name="medicine_name" class="hm-input"
+                   placeholder="e.g. Paracetamol, Vitamin C"/>
+          </div>
+          <div class="hm-field">
+            <label class="hm-label">Dosage (optional)</label>
+            <input type="text" name="dosage" class="hm-input"
+                   placeholder="e.g. 500mg, 1 tablet"/>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-hm-primary w-100 mt-2">
+          <i class="bi bi-bell-fill me-1"></i> Set Reminder
+        </button>
+      </form>
+    </div>
+
+    <!-- Quick tips -->
+    <div class="hm-card mt-4 tips-card">
+      <h6 class="card-title mb-3">💡 Tips</h6>
+      <div class="tip-item"><i class="bi bi-info-circle text-info"></i> "Twice a day" sets reminders 6 hours apart automatically.</div>
+      <div class="tip-item"><i class="bi bi-info-circle text-info"></i> "Three times a day" spaces reminders every 5 hours.</div>
+      <div class="tip-item"><i class="bi bi-info-circle text-info"></i> You'll get a popup notification when a reminder is due.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Reminder list -->
+  <div class="rem-right">
+
+    <!-- Upcoming -->
+    {% if upcoming %}
+    <div class="rem-section">
+      <div class="rem-section-title">
+        <span class="rst-dot" style="background:#22C55E;"></span>
+        Upcoming Today ({{ upcoming | length }})
+      </div>
+      {% for rem in upcoming %}
+      {{ render_reminder(rem) }}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Past today -->
+    {% if past %}
+    <div class="rem-section mt-3">
+      <div class="rem-section-title">
+        <span class="rst-dot" style="background:#94A3B8;"></span>
+        Earlier Today ({{ past | length }})
+      </div>
+      {% for rem in past %}
+      {{ render_reminder(rem) }}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Inactive -->
+    {% if inactive %}
+    <div class="rem-section mt-3">
+      <div class="rem-section-title">
+        <span class="rst-dot" style="background:#E2E8F0;"></span>
+        Paused ({{ inactive | length }})
+      </div>
+      {% for rem in inactive %}
+      {{ render_reminder(rem, paused=True) }}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not upcoming and not past and not inactive %}
+    <div class="hm-card">
+      <div class="empty-state" style="padding:48px 0;">
+        <div class="es-icon" style="font-size:48px;">🔔</div>
+        <p style="font-size:16px;font-weight:600;margin-bottom:4px;">No reminders yet</p>
+        <p style="color:#94A3B8;">Add a reminder on the left to get started.</p>
+      </div>
+    </div>
+    {% endif %}
+
+  </div><!-- /.rem-right -->
+
+</div><!-- /.reminders-layout -->
+
+<script>
+// ── TYPE CHANGE: show/hide medicine section ──
+function onTypeChange(val) {
+  const med = document.getElementById('medicineSection');
+  const custom = document.getElementById('customScheduleSection');
+  const standard = document.getElementById('standardRepeatSection');
+
+  med.style.display = val === 'medicine' ? 'block' : 'none';
+  custom.style.display = (val === 'water') ? 'block' : 'none';
+  standard.style.display = (val === 'water') ? 'none' : 'block';
+
+  // Highlight selected type chip
+  document.querySelectorAll('.rt-chip').forEach(c => c.classList.remove('selected'));
+  const checked = document.querySelector(`[name="reminder_type"][value="${val}"]`);
+  if (checked) checked.closest('.rt-chip').classList.add('selected');
+}
+
+// ── REPEAT CHIP SELECTION ──
+document.querySelectorAll('.rp-chip input').forEach(inp => {
+  inp.addEventListener('change', () => {
+    document.querySelectorAll('.rp-chip').forEach(c => c.classList.remove('selected'));
+    inp.closest('.rp-chip').classList.add('selected');
+  });
+});
+
+// ── TOGGLE REMINDER (pause / resume) ──
+async function toggleReminder(rid, btn) {
+  try {
+    const res  = await fetch(`/reminders/toggle/${rid}`, {method:'POST'});
+    const data = await res.json();
+    if (data.success) {
+      const card  = document.getElementById(`rem-${rid}`);
+      const icon  = btn.querySelector('i');
+      if (data.is_active) {
+        btn.classList.replace('rc-paused', 'rc-active');
+        icon.className = 'bi bi-pause-circle-fill';
+        btn.title = 'Pause';
+        card?.classList.remove('rem-card-paused');
+      } else {
+        btn.classList.replace('rc-active', 'rc-paused');
+        icon.className = 'bi bi-play-circle-fill';
+        btn.title = 'Resume';
+        card?.classList.add('rem-card-paused');
+      }
+    }
+  } catch(e) { console.error('Toggle failed', e); }
+}
+
+// ── INIT: apply type radio highlights on load ──
+document.querySelectorAll('.rem-type-radio').forEach(inp => {
+  inp.closest('.rt-chip').classList.toggle('selected', inp.checked);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+{% block title %}Meals — HealthMate{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">🍽 Meal Logger</h1>
+    <p class="page-sub">{{ today }} · {{ calories_consumed | int }} / {{ cal_target | int }} kcal</p>
+  </div>
+</div>
+
+<!-- Calorie bar -->
+<div class="hm-card mb-4">
+  <div class="card-header-row mb-2">
+    <span class="card-title">Today's Calorie Progress</span>
+    <span class="pct-badge {% if cal_pct>=100 %}pct-over{% elif cal_pct>=80 %}pct-warn{% else %}pct-ok{% endif %}">
+      {{ cal_pct }}%
+    </span>
+  </div>
+  <div class="cal-track">
+    <div class="cal-fill {% if cal_pct>=100 %}cal-fill-over{% elif cal_pct>=80 %}cal-fill-warn{% endif %}"
+         id="calFill" style="width:{{ cal_pct }}%;"></div>
+  </div>
+  <div class="cal-track-meta">
+    <span id="calEaten">{{ calories_consumed | int }} kcal eaten</span>
+    <span id="calRemaining">{{ calories_remaining | int }} kcal remaining</span>
+  </div>
+</div>
+
+<div class="meals-layout">
+
+  <!-- LEFT: Add meal form -->
+  <div class="meals-left">
+    <div class="hm-card">
+      <h6 class="card-title mb-4">➕ Add a Meal</h6>
+
+      <!-- Food name with autocomplete -->
+      <div class="hm-field">
+        <label class="hm-label">Food Name</label>
+        <div class="autocomplete-wrap" style="position:relative;">
+          <input type="text" id="foodName" class="hm-input" placeholder="e.g. Chicken Adobo"
+                 autocomplete="off" oninput="searchFood(this.value)"/>
+          <div class="autocomplete-dropdown" id="acDropdown" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="hm-field">
+        <label class="hm-label">Weight (g)</label>
+        <input type="number" id="mealWeight" class="hm-input" placeholder="e.g. 100" min="1" value="100" oninput="calculateCalories()"/>
+      </div>
+
+      <div class="hm-field">
+        <label class="hm-label">Calories (kcal) <i class="bi bi-calculator ms-1" style="opacity: 0.6;" title="System calculated"></i></label>
+        <input type="number" id="mealCal" class="hm-input" placeholder="0" style="font-weight: 600;"/>
+      </div>
+
+      <!-- Meal type -->
+      <div class="hm-field">
+        <label class="hm-label">Meal Type</label>
+        <div class="meal-type-grid" id="mealTypeGrid">
+          {% for mt, icon in [('breakfast','🍳'),('lunch','🍱'),('snack','🍌'),('dinner','🍽'),('other','🥗')] %}
+          <label class="mt-chip {% if mt == current_meal_type %}selected{% endif %}">
+            <input type="radio" name="meal_type" value="{{ mt }}"
+                   {% if mt == current_meal_type %}checked{% endif %}
+                   class="visually-hidden"/>
+            <span>{{ icon }} {{ mt | title }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button class="btn-hm-primary w-100" onclick="addMeal()">
+        <i class="bi bi-plus-circle-fill me-1"></i> Add Meal
+      </button>
+      <div id="addFeedback" class="mt-2" style="font-size:13px;min-height:20px;"></div>
+    </div>
+
+    <!-- AI Suggestions -->
+    <div class="hm-card mt-4">
+      <h6 class="card-title mb-3"><i class="bi bi-stars" style="color:var(--purple);"></i> AI-Powered Suggestions</h6>
+      <div class="suggestion-grid">
+        {% for food_name, cals in suggestions %}
+        <button class="suggestion-chip"
+                onclick="fillFood('{{ food_name }}', {{ cals | int }})">
+          <span class="sc-name">{{ food_name }}</span>
+          {% if cals > 0 %}<span class="sc-cal">{{ cals | int }} kcal</span>{% endif %}
+        </button>
+        {% endfor %}
+      </div>
+      <p class="suggestion-hint">Personalized based on your goal to <strong>{{ profile.goal }} weight</strong></p>
+    </div>
+
+    <!-- Quick history -->
+    {% if history %}
+    <div class="hm-card mt-4">
+      <h6 class="card-title mb-3">🕐 Your Food History</h6>
+      <div class="history-list">
+        {% for item in history[:12] %}
+        <div class="history-item" id="hist-{{ item.id }}">
+          <button class="history-chip" onclick="fillFood('{{ item.name }}', {{ item.calories | int }})">
+            {{ item.name }}{% if item.calories > 0 %} · {{ item.calories | int }} kcal{% endif %}
+          </button>
+          <button class="hist-del-btn" onclick="deleteHistory({{ item.id }})" title="Remove from history">×</button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT: Today's log grouped by meal type -->
+  <div class="meals-right">
+    {% set type_meta = {
+      'breakfast': ('🍳', 'Breakfast', '#FEF9C3', '#B45309'),
+      'lunch':     ('🍱', 'Lunch',     '#DCFCE7', '#15803D'),
+      'snack':     ('🍌', 'Snack',     '#FFF7ED', '#C2410C'),
+      'dinner':    ('🍽', 'Dinner',    '#EDE9FE', '#6D28D9'),
+      'other':     ('🥗', 'Other',     '#F1F5F9', '#475569'),
+    } %}
+    {% for mtype, meals_in_group in groups.items() %}
+    {% set icon, label, bg, color = type_meta[mtype] %}
+    <div class="meal-group" id="group-{{ mtype }}">
+      <div class="mg-header">
+        <div class="mg-badge" style="background:{{ bg }};color:{{ color }};">
+          {{ icon }} {{ label }}
+        </div>
+        <span class="mg-total" id="group-total-{{ mtype }}">
+          {{ meals_in_group | sum(attribute='calories') | int }} kcal
+        </span>
+      </div>
+      <div class="mg-items" id="items-{{ mtype }}">
+        {% if meals_in_group %}
+          {% for meal in meals_in_group %}
+          <div class="mg-item" id="meal-{{ meal.id }}">
+            <div class="mgi-info">
+              <span class="mgi-name">{{ meal.food_name }}</span>
+              <span class="mgi-time">{{ meal.logged_at.strftime('%I:%M %p') }}</span>
+            </div>
+            <div class="mgi-right">
+              <span class="mgi-cal">+{{ meal.calories | int }} kcal</span>
+              <button class="mgi-delete" onclick="deleteMeal({{ meal.id }}, '{{ mtype }}')"
+                      title="Remove meal">
+                <i class="bi bi-x-circle"></i>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="mg-empty" id="empty-{{ mtype }}">
+            No {{ label | lower }} logged yet
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Grand total -->
+    <div class="hm-card meals-total-card">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="fw-600">Total Today</span>
+        <div class="text-end">
+          <div class="total-cal" id="grandTotal">{{ calories_consumed | int }} kcal</div>
+          <div class="total-sub" id="grandRemaining">{{ calories_remaining }} remaining</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.meals-layout -->
+
+<script>
+const CAL_TARGET    = {{ cal_target }};
+const HISTORY       = {{ history | tojson }};
+let totalConsumed   = {{ calories_consumed }};
+let baseKcalPer100g = 0;
+
+// ── REAL-TIME CALORIE CALCULATION ──
+function calculateCalories() {
+  const weight = parseFloat(document.getElementById('mealWeight').value) || 0;
+  const calInput = document.getElementById('mealCal');
+  const total = Math.round((baseKcalPer100g / 100) * weight);
+  
+  if (calInput.value != total) {
+    calInput.value = total;
+    // Pulse UX feedback
+    calInput.classList.remove('pulse-highlight');
+    void calInput.offsetWidth; // trigger reflow
+    calInput.classList.add('pulse-highlight');
+  }
+}
+
+// ── FILL FORM FROM SUGGESTION ──
+function fillFood(name, cal) {
+  document.getElementById('foodName').value = name;
+  baseKcalPer100g = cal || 0;
+  calculateCalories();
+  
+  // Set focus to weight for quick entry
+  const wInput = document.getElementById('mealWeight');
+  wInput.focus();
+  wInput.select();
+  hideDropdown();
+}
+
+// ── AUTOCOMPLETE ──
+let acTimer = null;
+async function searchFood(q) {
+  clearTimeout(acTimer);
+  baseKcalPer100g = 0; // Reset density when user starts typing a new name
+  if (!q || q.trim().length === 0) { hideDropdown(); return; }
+  q = q.trim();
+
+  // Search local history first for instant results
+  const localResults = HISTORY.filter(h => h.name.toLowerCase().includes(q.toLowerCase())).slice(0, 5);
+  if (localResults.length > 0) {
+    showDropdown(localResults);
+  }
+
+  // Then fetch from server for global database items
+  acTimer = setTimeout(async () => {
+    try {
+      const res  = await fetch(`/api/food-search?q=${encodeURIComponent(q)}`);
+      const serverData = await res.json();
+      
+      // Merge results, preferring history matches
+      const mergedMap = new Map();
+      localResults.forEach(item => mergedMap.set(item.name.toLowerCase(), item));
+      serverData.forEach(item => {
+        if (!mergedMap.has(item.name.toLowerCase())) {
+          mergedMap.set(item.name.toLowerCase(), item);
+        }
+      });
+
+      const finalResults = Array.from(mergedMap.values()).slice(0, 10);
+      if (finalResults.length > 0) {
+        showDropdown(finalResults);
+      } else if (localResults.length === 0) {
+        hideDropdown();
+      }
+    } catch(e) { console.error('Food search failed', e); }
+  }, 200);
+}
+
+function showDropdown(items) {
+  const dd = document.getElementById('acDropdown');
+  dd.innerHTML = items.map(item =>
+    `<div class="ac-item" onclick="fillFood('${esc(item.name)}', ${item.calories||0})">
+       <div class="d-flex flex-column">
+         <span class="ac-name">${esc(item.name)}</span>
+         <span class="text-muted" style="font-size: 10px;">
+           ${item.source === 'history' ? '🕒 Recents' : '🌍 Global Database'}
+         </span>
+       </div>
+       ${item.calories > 0 ? `<span class="ac-cal">${Math.round(item.calories)} kcal/100g</span>` : ''}
+     </div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+function hideDropdown() {
+  document.getElementById('acDropdown').style.display = 'none';
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.autocomplete-wrap')) hideDropdown();
+});
+
+function esc(s) { return s.replace(/'/g, "\\'").replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── MEAL TYPE SELECTION ──
+document.querySelectorAll('.mt-chip input').forEach(inp => {
+  inp.addEventListener('change', () => {
+    document.querySelectorAll('.mt-chip').forEach(c => c.classList.remove('selected'));
+    inp.closest('.mt-chip').classList.add('selected');
+  });
+});
+
+// ── ADD MEAL ──
+async function addMeal() {
+  const name     = document.getElementById('foodName').value.trim();
+  const cal      = parseFloat(document.getElementById('mealCal').value);
+  const weight   = parseFloat(document.getElementById('mealWeight').value) || 100;
+  const mealType = document.querySelector('[name="meal_type"]:checked')?.value || 'other';
+  const fb       = document.getElementById('addFeedback');
+
+  if (!name) { showFeedback('⚠ Enter a food name.', 'err'); return; }
+  if (!cal || cal < 0) { showFeedback('⚠ Enter a valid calorie amount.', 'err'); return; }
+
+  showFeedback('Adding...', 'info');
+  try {
+    const res  = await fetch('/meals/add', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({food_name: name, calories: cal, weight: weight, meal_type: mealType, base_calories: baseKcalPer100g}),
+    });
+    const data = await res.json();
+    if (data.success) {
+      totalConsumed += cal;
+      updateCalBar();
+      appendMealRow(data.meal_id, data.food_name, data.calories, mealType, data.logged_at);
+      document.getElementById('foodName').value = '';
+      document.getElementById('mealWeight').value = '100';
+      baseKcalPer100g = 0;
+      document.getElementById('mealCal').value  = '';
+      showFeedback(`✅ ${name} added!`, 'ok');
+    } else {
+      showFeedback(`❌ ${data.error}`, 'err');
+    }
+  } catch(e) {
+    showFeedback('❌ Network error. Try again.', 'err');
+  }
+}
+
+document.getElementById('mealCal')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') addMeal();
+});
+document.getElementById('foodName')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('mealCal').focus();
+});
+
+// ── APPEND MEAL ROW ──
+function appendMealRow(id, name, cal, mtype, time) {
+  const emptyEl = document.getElementById(`empty-${mtype}`);
+  if (emptyEl) emptyEl.remove();
+
+  const items = document.getElementById(`items-${mtype}`);
+  const row   = document.createElement('div');
+  row.className = 'mg-item';
+  row.id        = `meal-${id}`;
+  row.innerHTML = `
+    <div class="mgi-info">
+      <span class="mgi-name">${esc(name)}</span>
+      <span class="mgi-time">${time}</span>
+    </div>
+    <div class="mgi-right">
+      <span class="mgi-cal">+${Math.round(cal)} kcal</span>
+      <button class="mgi-delete" onclick="deleteMeal(${id},'${mtype}')" title="Remove">
+        <i class="bi bi-x-circle"></i>
+      </button>
+    </div>`;
+  items.appendChild(row);
+  updateGroupTotal(mtype, cal);
+}
+
+// ── DELETE HISTORY ITEM ──
+async function deleteHistory(id) {
+  try {
+    const res = await fetch(`/meals/history/delete/${id}`, {method: 'DELETE'});
+    const data = await res.json();
+    if (data.success) {
+      // Remove the chip from the UI
+      const el = document.getElementById(`hist-${id}`);
+      if (el) el.remove();
+      
+      // Update the local JavaScript array so autocomplete stays in sync
+      const idx = HISTORY.findIndex(h => h.id === id);
+      if (idx !== -1) HISTORY.splice(idx, 1);
+
+      // If no history items are left, hide the whole card
+      const list = document.querySelector('.history-list');
+      if (list && list.children.length === 0) {
+        list.closest('.hm-card').style.display = 'none';
+      }
+    }
+  } catch(e) { console.error('Delete history failed', e); }
+}
+
+// ── DELETE MEAL ──
+async function deleteMeal(id, mtype) {
+  const row = document.getElementById(`meal-${id}`);
+  if (!row) return;
+  const calEl = row.querySelector('.mgi-cal');
+  const cal   = parseFloat(calEl?.textContent?.replace(/[^\d.]/g,'') || 0);
+
+  try {
+    const res  = await fetch(`/meals/delete/${id}`, {method:'DELETE'});
+    const data = await res.json();
+    if (data.success) {
+      row.remove();
+      totalConsumed = Math.max(0, totalConsumed - cal);
+      updateCalBar();
+      updateGroupTotal(mtype, -cal);
+      // Show empty state if no items left
+      const items = document.getElementById(`items-${mtype}`);
+      if (items && !items.querySelector('.mg-item')) {
+        const labels = {breakfast:'Breakfast',lunch:'Lunch',snack:'Snack',dinner:'Dinner',other:'Other'};
+        items.innerHTML = `<div class="mg-empty" id="empty-${mtype}">No ${(labels[mtype]||mtype).toLowerCase()} logged yet</div>`;
+      }
+    }
+  } catch(e) { console.error('Delete failed', e); }
+}
+
+// ── UPDATE CALORIE BAR ──
+function updateCalBar() {
+  const pct   = Math.min(100, Math.round(totalConsumed / CAL_TARGET * 100));
+  const rem   = Math.max(0, CAL_TARGET - totalConsumed);
+  const fill  = document.getElementById('calFill');
+  const badge = document.querySelector('.pct-badge');
+
+  fill.style.width = pct + '%';
+  fill.className   = 'cal-fill' + (pct>=100?' cal-fill-over':pct>=80?' cal-fill-warn':'');
+  if(badge){ badge.textContent=pct+'%'; badge.className='pct-badge '+(pct>=100?'pct-over':pct>=80?'pct-warn':'pct-ok'); }
+
+  document.getElementById('calEaten').textContent     = `${Math.round(totalConsumed)} kcal eaten`;
+  document.getElementById('calRemaining').textContent = `${Math.round(rem)} kcal remaining`;
+  document.getElementById('grandTotal').textContent   = `${Math.round(totalConsumed)} kcal`;
+  document.getElementById('grandRemaining').textContent = `${Math.round(rem)} remaining`;
+}
+
+// ── UPDATE GROUP TOTAL ──
+function updateGroupTotal(mtype, delta) {
+  const el  = document.getElementById(`group-total-${mtype}`);
+  if (!el) return;
+  const cur = parseFloat(el.textContent) || 0;
+  el.textContent = `${Math.round(Math.max(0, cur + delta))} kcal`;
+}
+
+// ── FEEDBACK ──
+function showFeedback(msg, type) {
+  const el = document.getElementById('addFeedback');
+  el.textContent = msg;
+  el.style.color = type==='ok'?'#22C55E':type==='err'?'#EF4444':'#64748B';
+  if(type==='ok') setTimeout(()=>el.textContent='', 3000);
+}
+</script>
+{% endblock %}

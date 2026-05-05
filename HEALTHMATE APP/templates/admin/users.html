@@ -1,0 +1,80 @@
+{% extends "admin/base.html" %}
+{% block title %}User Management{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">User Management</h1>
+        <p class="page-sub">Manage and monitor health portal accounts</p>
+    </div>
+</div>
+
+<div class="hm-card">
+    <div class="card-header-row mb-4">
+        <h6 class="card-title">User Accounts</h6>
+        <form method="GET" class="d-flex gap-2">
+            <div class="hm-input-wrap">
+                <i class="bi bi-search hm-input-icon"></i>
+                <input type="text" name="q" class="hm-input hm-input-iconed" placeholder="Search users..." value="{{ q }}" style="width: 100%; min-width: 180px;">
+            </div>
+            <button type="submit" class="btn-hm-primary">Filter</button>
+        </form>
+    </div>
+
+    <div class="table-responsive admin-table">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th class="d-none d-md-table-cell">Email</th>
+                    <th class="d-none d-md-table-cell">Joined</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="su-avatar" style="width: 32px; height: 32px; font-size: 11px;">{{ user.initials }}</div>
+                            <div>
+                                <div class="fw-700">@{{ user.username }}</div>
+                                <div class="text-muted" style="font-size: 12px;">{{ user.profile.full_name if user.profile else 'No Name' }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="d-none d-md-table-cell">{{ user.email }}</td>
+                    <td class="d-none d-md-table-cell">{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td>
+                        {% if user.is_active %}
+                        <span class="badge-pro badge-pro-success"><i class="bi bi-check-circle"></i> Active</span>
+                        {% else %}
+                        <span class="badge-pro badge-pro-danger"><i class="bi bi-dash-circle"></i> Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <form action="{{ url_for('admin_toggle_user', uid=user.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-sm {% if user.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                {% if user.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+                        <a href="{{ url_for('admin_edit_user', uid=user.id) }}" class="btn btn-sm btn-outline-primary me-1">
+                            Edit
+                        </a>
+                        <form action="{{ url_for('admin_delete_user', uid=user.id) }}" method="POST" style="display:inline;"
+                              onsubmit="return confirm('Are you sure you want to delete user {{ user.username }}? This action cannot be undone.')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not users %}
+                <tr><td colspan="5" class="text-center py-4">No users found.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

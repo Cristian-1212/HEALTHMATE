@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — HealthMate{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="page-header">
+  <div>
+    <p class="page-eyebrow">{{ greeting }}, {{ user.display_name }} 👋</p>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-sub">{{ today }} · <span class="goal-chip">{{ goal_label }}</span></p>
+  </div>
+  <a href="{{ url_for('profile') }}" class="btn-hm-outline d-none d-sm-flex align-items-center gap-2">
+    <i class="bi bi-person-gear"></i> Edit Profile
+  </a>
+</div>
+
+<!-- ── STAT CARDS ── -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="sc-icon" style="background:#FFF7ED;color:#F97316;">🔥</div>
+    <div class="sc-body">
+      <div class="sc-val">{{ calories_consumed | int }}</div>
+      <div class="sc-label">Calories Eaten</div>
+    </div>
+    <div class="sc-sub">kcal today</div>
+  </div>
+  <div class="stat-card">
+    <div class="sc-icon" style="background:#EFF6FF;color:#3B82F6;">⚡</div>
+    <div class="sc-body">
+      <div class="sc-val">{{ calories_remaining | int }}</div>
+      <div class="sc-label">Remaining</div>
+    </div>
+    <div class="sc-sub">kcal left</div>
+  </div>
+  <div class="stat-card">
+    <div class="sc-icon" style="background:{{ metrics.bmi_bg if metrics else '#F0FDF4' }};color:{{ metrics.bmi_color if metrics else '#22C55E' }};">⚖</div>
+    <div class="sc-body">
+      <div class="sc-val" style="color:{{ metrics.bmi_color if metrics else '#22C55E' }};">
+        {{ (metrics.bmi if metrics else profile.bmi) | round | int }}
+      </div>
+      <div class="sc-label">BMI</div>
+    </div>
+    <div class="sc-sub">{{ metrics.bmi_category if metrics else '' }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="sc-icon" style="background:#F5F3FF;color:#6366F1;">🎯</div>
+    <div class="sc-body">
+      <div class="sc-val">{{ cal_target }}</div>
+      <div class="sc-label">Daily Goal</div>
+    </div>
+    <div class="sc-sub">kcal target</div>
+  </div>
+</div>
+
+<!-- ── MAIN GRID ── -->
+<div class="dashboard-grid">
+
+  <!-- LEFT -->
+  <div class="dg-left">
+
+    <!-- Calorie progress -->
+    <div class="hm-card">
+      <div class="card-header-row">
+        <h6 class="card-title">🔥 Calorie Progress</h6>
+        <span class="pct-badge {% if cal_pct >= 100 %}pct-over{% elif cal_pct >= 80 %}pct-warn{% else %}pct-ok{% endif %}">{{ cal_pct }}%</span>
+      </div>
+      <div class="cal-track">
+        <div class="cal-fill {% if cal_pct >= 100 %}cal-fill-over{% elif cal_pct >= 80 %}cal-fill-warn{% endif %}" style="width:{{ cal_pct }}%;"></div>
+      </div>
+      <div class="cal-track-meta">
+        <span>{{ calories_consumed | int }} kcal eaten</span>
+        <span>{{ cal_target }} kcal goal</span>
+      </div>
+      <div class="quick-actions mt-3">
+        <a href="{{ url_for('meals') }}" class="qa-btn qa-green">
+          <i class="bi bi-plus-circle-fill"></i> Log Meal
+        </a>
+        <a href="{{ url_for('reminders') }}" class="qa-btn qa-purple">
+          <i class="bi bi-bell-fill"></i> Reminders
+        </a>
+        <a href="{{ url_for('profile') }}" class="qa-btn qa-blue">
+          <i class="bi bi-person-gear"></i> Profile
+        </a>
+      </div>
+    </div>
+
+    <!-- Weight Forecast -->
+    <div class="hm-card mt-4" style="background: linear-gradient(135deg, var(--blue-lt), #fff); border-color: #BFDBFE;">
+      <div class="card-header-row">
+        <h6 class="card-title"><i class="bi bi-graph-up-arrow text-primary"></i> Weight Forecast</h6>
+        <span class="badge bg-white text-primary border">4-Week Projection</span>
+      </div>
+      <div class="row align-items-center">
+        <div class="col-6 border-end">
+          <div class="text-muted small mb-1">Weekly Trend</div>
+          <div class="fw-800" style="font-size: 20px; color: {{ '#EF4444' if forecast.weekly_diff > 0 else '#10B981' }};">
+            {{ '+' if forecast.weekly_diff > 0 }}{{ forecast.weekly_diff | round | int }} kg
+          </div>
+        </div>
+        <div class="col-6 ps-4">
+          <div class="text-muted small mb-1">Est. Weight</div>
+          <div class="fw-800" style="font-size: 20px; color: var(--text);">
+            {{ forecast.forecast_4w | round | int }} <small class="text-muted">kg</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's meals log -->
+    <div class="hm-card mt-4">
+      <div class="card-header-row">
+        <h6 class="card-title">🍽 Today's Meals</h6>
+        <a href="{{ url_for('meals') }}" class="card-link">View all</a>
+      </div>
+      {% if today_meals %}
+        <div class="meal-list">
+          {% for meal in today_meals[:6] %}
+          <div class="meal-row">
+            <div class="mr-icon">
+              {% if meal.meal_type == 'breakfast' %}🍳
+              {% elif meal.meal_type == 'lunch' %}🍱
+              {% elif meal.meal_type == 'dinner' %}🍽
+              {% elif meal.meal_type == 'snack' %}🍌
+              {% else %}🥗{% endif %}
+            </div>
+            <div class="mr-info">
+              <div class="mr-name">{{ meal.food_name }}</div>
+              <div class="mr-meta">{{ meal.meal_type | title }} · {{ meal.logged_at.strftime('%I:%M %p') }}</div>
+            </div>
+            <div class="mr-cal">+{{ meal.calories | int }} kcal</div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="meal-total-bar">
+          <span>Total today</span>
+          <strong>{{ calories_consumed | int }} kcal</strong>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="es-icon">🍽</div>
+          <p>No meals logged today</p>
+        </div>
+      {% endif %}
+    </div>
+
+  </div><!-- /.dg-left -->
+
+  <!-- RIGHT -->
+  <div class="dg-right">
+    <!-- BMI scale -->
+    <div class="hm-card">
+      <h6 class="card-title mb-3">⚖ BMI Status</h6>
+      <div class="bmi-hero">
+        <div class="bmi-number" style="color:{{ metrics.bmi_color if metrics else '#22C55E' }};">{{ (metrics.bmi if metrics else profile.bmi) | round | int }}</div>
+        <div class="bmi-cat-badge" style="background:{{ metrics.bmi_bg if metrics else '#F0FDF4' }}; color:{{ metrics.bmi_color if metrics else '#22C55E' }};">
+          {{ metrics.bmi_category if metrics else '' }}
+        </div>
+      </div>
+      <div class="bmi-scale-track">
+        <div class="bmi-zone" style="width:18.5%;background:#BFDBFE;border-radius:6px 0 0 6px;"></div>
+        <div class="bmi-zone" style="width:26.5%;background:#BBF7D0;"></div>
+        <div class="bmi-zone" style="width:15%;background:#FDE68A;"></div>
+        <div class="bmi-zone" style="width:40%;background:#FECACA;border-radius:0 6px 6px 0;"></div>
+        <div class="bmi-marker" style="left:{{ bmi_pct }}%; background:{{ metrics.bmi_color if metrics else '#22C55E' }};"></div>
+      </div>
+      <div class="bmi-scale-labels">
+        <span>18.5</span><span>25</span><span>30</span><span>40+</span>
+      </div>
+    </div>
+
+    <!-- Weekly Progress -->
+    <div class="hm-card mt-4">
+      <h6 class="card-title mb-3">📊 This Week</h6>
+      <div class="week-chart">
+        {% set max_cal = weekly | map(attribute='calories') | max | default(1) %}
+        {% for day in weekly %}
+          {% set pct = (day.calories / max_cal * 100) | int if max_cal > 0 else 0 %}
+          <div class="wc-col">
+            <div class="wc-bar-wrap">
+              <div class="wc-bar wc-bar-ok" style="height:{{ (pct if pct > 4 else 4) }}%;"></div>
+            </div>
+            <div class="wc-label">{{ day.day }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Profile summary -->
+    <div class="hm-card mt-4">
+      <div class="card-header-row mb-3">
+        <h6 class="card-title mb-0">👤 Your Stats</h6>
+        <a href="{{ url_for('profile') }}" class="card-link">Edit</a>
+      </div>
+      <div class="profile-summary">
+        <div class="ps-row"><span>Height</span><strong>{{ profile.height | round | int }} cm</strong></div>
+        <div class="ps-row"><span>Weight</span><strong>{{ profile.weight | round | int }} kg</strong></div>
+        <div class="ps-row"><span>Goal</span><strong>{{ goal_label }}</strong></div>
+      </div>
+    </div>
+  </div><!-- /.dg-right -->
+
+</div>
+{% endblock %}

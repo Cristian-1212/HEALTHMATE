@@ -1,0 +1,32 @@
+{% extends "admin/base.html" %}
+{% block title %}Edit Food: {{ food.name }}{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Edit Food Item: {{ food.name }}</h1>
+        <p class="page-sub">Update details for this global food entry</p>
+    </div>
+    <a href="{{ url_for('admin_foods') }}" class="btn-hm-outline">
+        <i class="bi bi-arrow-left"></i> Back to Food Database
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="hm-card">
+            <h6 class="card-title mb-3">Food Details</h6>
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="hm-label">Food Name</label>
+                    <input type="text" name="name" class="hm-input" value="{{ food.name }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="hm-label">Calories (per serving)</label>
+                    <input type="number" name="calories" class="hm-input" value="{{ food.calories }}" step="0.1" required>
+                </div>
+                <button type="submit" class="btn-hm-primary mt-3">Save Changes</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

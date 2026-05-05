@@ -1,0 +1,116 @@
+{% extends "admin/base.html" %}
+{% block title %}Food Database{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Global Food Database</h1>
+        <p class="page-sub">Add foods that all users can search and log</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="admin-content-card p-4">
+            <h6 class="card-title mb-3">Add New Food Item</h6>
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="hm-label">Food Name</label>
+                    <input type="text" name="name" class="hm-input" placeholder="e.g. Grilled Chicken" required>
+                </div>
+                <div class="mb-3">
+                    <label class="hm-label">Calories (per serving)</label>
+                    <input type="number" name="calories" class="hm-input" placeholder="0" step="0.1" required>
+                </div>
+                <button type="submit" class="btn-hm-primary w-100">Add to Library</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="admin-content-card">
+            <div class="p-3 border-bottom">
+                <h6 class="card-title mb-3">System Library</h6>
+                <form method="GET" action="{{ url_for('admin_foods') }}" class="position-relative" id="adminSearchForm">
+                    <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                    <input type="text" name="q" class="hm-input ps-5 rounded-pill" 
+                           placeholder="Search foods by name..." value="{{ q or '' }}"
+                           oninput="debounceSearch()">
+                </form>
+            </div>
+            <div class="table-responsive-admin">
+                <table class="admin-table admin-table-compact align-middle">
+                    <thead>
+                        <tr>
+                            <th>Food Name</th>
+                            <th>Calories</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for food in foods %}
+                        <tr>
+                            <td class="fw-bold">{{ food.name }}</td>
+                            <td>{{ food.calories | round | int }} kcal</td>
+                            <td>
+                                <div class="admin-actions justify-content-end">
+                                <a href="{{ url_for('admin_edit_food', fid=food.id) }}" class="btn-admin-action btn-admin-edit" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="{{ url_for('admin_delete_food', fid=food.id) }}" method="POST" onsubmit="return confirm('Delete this food?')">
+                                    <button type="submit" class="btn-admin-action btn-admin-delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not foods %}
+                        <tr><td colspan="3" class="text-center py-4">No foods in library.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination Footer -->
+            <div class="admin-pagination-footer d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+                <div class="pagination-info">
+                    Showing {{ pagination.first }}–{{ pagination.last }} of {{ pagination.total }} items
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+                            <a class="page-link" href="{{ url_for('admin_foods', page=pagination.prev_num, q=q) if pagination.has_prev else '#' }}">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        {% for p in pagination.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
+                            {% if p %}
+                                <li class="page-item {{ 'active' if p == pagination.page }}">
+                                    <a class="page-link" href="{{ url_for('admin_foods', page=p, q=q) }}">{{ p }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+                            <a class="page-link" href="{{ url_for('admin_foods', page=pagination.next_num, q=q) if pagination.has_next else '#' }}">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let searchTimer;
+function debounceSearch() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        document.getElementById('adminSearchForm').submit();
+    }, 600);
+}
+</script>
+{% endblock %}

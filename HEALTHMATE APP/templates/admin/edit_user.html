@@ -1,0 +1,85 @@
+{% extends "admin/base.html" %}
+{% block title %}Edit User: {{ user.username }}{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Edit User: {{ user.username }}</h1>
+        <p class="page-sub">Update user account and profile details</p>
+    </div>
+    <a href="{{ url_for('admin_users') }}" class="btn-hm-outline">
+        <i class="bi bi-arrow-left"></i> Back to Users
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="hm-card">
+            <h6 class="card-title mb-3">Account Details</h6>
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="hm-label">Username</label>
+                    <input type="text" name="username" class="hm-input" value="{{ user.username }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="hm-label">Email</label>
+                    <input type="email" name="email" class="hm-input" value="{{ user.email }}" required>
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="is_active" name="is_active" {% if user.is_active %}checked{% endif %}>
+                    <label class="form-check-label" for="is_active">Account Active</label>
+                </div>
+
+                <h6 class="card-title mt-4 mb-3">Profile Information</h6>
+                <div class="mb-3">
+                    <label class="hm-label">Full Name</label>
+                    <input type="text" name="full_name" class="hm-input" value="{{ profile.full_name if profile else '' }}">
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="hm-label">Age</label>
+                        <input type="number" name="age" class="hm-input" value="{{ profile.age if profile else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="hm-label">Gender</label>
+                        <select name="gender" class="hm-select">
+                            <option value="">Select</option>
+                            <option value="male" {% if profile and profile.gender == 'male' %}selected{% endif %}>Male</option>
+                            <option value="female" {% if profile and profile.gender == 'female' %}selected{% endif %}>Female</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="hm-label">Height (cm)</label>
+                        <input type="number" name="height" class="hm-input" value="{{ profile.height if profile else '' }}" step="0.1">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="hm-label">Weight (kg)</label>
+                        <input type="number" name="weight" class="hm-input" value="{{ profile.weight if profile else '' }}" step="0.1">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="hm-label">Activity Level</label>
+                        <select name="activity_level" class="hm-select">
+                            <option value="sedentary" {% if profile and profile.activity_level == 'sedentary' %}selected{% endif %}>Sedentary</option>
+                            <option value="light" {% if profile and profile.activity_level == 'light' %}selected{% endif %}>Light</option>
+                            <option value="moderate" {% if profile and profile.activity_level == 'moderate' %}selected{% endif %}>Moderate</option>
+                            <option value="active" {% if profile and profile.activity_level == 'active' %}selected{% endif %}>Active</option>
+                            <option value="athlete" {% if profile and profile.activity_level == 'athlete' %}selected{% endif %}>Athlete</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="hm-label">Goal</label>
+                        <select name="goal" class="hm-select">
+                            <option value="lose" {% if profile and profile.goal == 'lose' %}selected{% endif %}>Lose Weight</option>
+                            <option value="maintain" {% if profile and profile.goal == 'maintain' %}selected{% endif %}>Maintain Weight</option>
+                            <option value="gain" {% if profile and profile.goal == 'gain' %}selected{% endif %}>Gain Weight</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-hm-primary mt-3">Save Changes</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

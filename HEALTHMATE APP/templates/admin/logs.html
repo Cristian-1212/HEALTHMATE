@@ -1,0 +1,93 @@
+{% extends "admin/base.html" %}
+{% block title %}Audit Logs{% endblock %}
+{% block admin_content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Audit Trail</h1>
+        <p class="page-sub">Complete history of system activity</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="hm-card mb-4">
+            <h6 class="card-title mb-3">Filter Audit Logs</h6>
+            <form method="GET" class="audit-filter-form">
+                <div class="audit-filter-group">
+                    <label class="hm-label">Actor Name</label>
+                    <input type="text" name="actor" class="hm-input" placeholder="e.g., Admin, user123" value="{{ actor_filter if actor_filter else '' }}">
+                </div>
+                <div class="audit-filter-group">
+                    <label class="hm-label">Action Contains</label>
+                    <input type="text" name="action" class="hm-input" placeholder="e.g., logged in, deleted" value="{{ action_filter if action_filter else '' }}">
+                </div>
+                <div class="audit-filter-actions">
+                    <button type="submit" class="btn-hm-primary">Apply Filters</button>
+                    {% if actor_filter or action_filter %}
+                    <a href="{{ url_for('admin_logs') }}" class="btn-hm-outline">Clear</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="col-lg-12" style="min-height: 70vh;"> {# Added min-height for consistent layout #}
+        <div class="hm-card">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Actor</th>
+                            <th>Action Performed</th>
+                            <th class="d-none d-md-table-cell">IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="text-muted">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td class="fw-bold">{{ log.actor_name if log.actor_name else 'N/A' }}</td>
+                            <td>{{ log.action }}</td>
+                            <td class="text-muted small d-none d-md-table-cell">{{ log.ip_address if log.ip_address else 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% if not logs %}
+                        <tr><td colspan="4" class="text-center py-4">No activity logs found.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination Footer -->
+            <div class="admin-pagination-footer d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+                <div class="pagination-info">
+                    Showing {{ pagination.first }}–{{ pagination.last }} of {{ pagination.total }} items
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+                            <a class="page-link" href="{{ url_for('admin_logs', page=pagination.prev_num, actor=actor_filter, action=action_filter) if pagination.has_prev else '#' }}">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        {% for p in pagination.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
+                            {% if p %}
+                                <li class="page-item {{ 'active' if p == pagination.page }}">
+                                    <a class="page-link" href="{{ url_for('admin_logs', page=p, actor=actor_filter, action=action_filter) }}">{{ p }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+                            <a class="page-link" href="{{ url_for('admin_logs', page=pagination.next_num, actor=actor_filter, action=action_filter) if pagination.has_next else '#' }}">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

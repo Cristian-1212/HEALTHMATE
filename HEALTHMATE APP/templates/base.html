@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}HealthMate{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"/>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<div class="hm-app">
+
+  <!-- ── SIDEBAR (desktop) ── -->
+  <aside class="hm-sidebar d-none d-lg-flex">
+    <div class="sidebar-top">
+      <a href="{{ url_for('dashboard') }}" class="sidebar-logo">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="HealthMate" class="logo-img"/>
+      </a>
+      <nav class="sidebar-nav">
+        {% if session.admin_id %}
+          <a href="{{ url_for('admin_dashboard') }}"
+             class="snav-link {% if 'admin_dashboard' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-speedometer2"></i><span>Admin Panel</span>
+          </a>
+          <a href="{{ url_for('admin_users') }}"
+             class="snav-link {% if 'admin_users' in request.endpoint or 'admin_edit_user' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-people-fill"></i><span>Users</span>
+          </a>
+          <a href="{{ url_for('admin_foods') }}"
+             class="snav-link {% if 'admin_foods' in request.endpoint or 'admin_edit_food' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-egg-fried"></i><span>Global Foods</span>
+          </a>
+          <a href="{{ url_for('admin_logs') }}"
+             class="snav-link {% if 'admin_logs' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-terminal"></i><span>Audit Logs</span>
+          </a>
+        {% else %}
+          <a href="{{ url_for('dashboard') }}"
+             class="snav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+            <i class="bi bi-grid-fill"></i><span>Dashboard</span>
+          </a>
+          <a href="{{ url_for('meals') }}"
+             class="snav-link {% if request.endpoint == 'meals' %}active{% endif %}">
+            <i class="bi bi-journal-richtext"></i><span>Meals</span>
+          </a>
+          <a href="{{ url_for('reminders') }}"
+             class="snav-link {% if request.endpoint == 'reminders' %}active{% endif %}">
+            <i class="bi bi-bell-fill"></i><span>Reminders</span>
+          </a>
+          <a href="{{ url_for('profile') }}"
+             class="snav-link {% if request.endpoint == 'profile' %}active{% endif %}">
+            <i class="bi bi-person-fill"></i><span>Profile</span>
+          </a>
+        {% endif %}
+      </nav>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="su-avatar">{{ user.initials if user else '?' }}</div>
+        <div class="su-info">
+          <div class="su-name">{{ user.display_name if user else '' }}</div>
+          <div class="su-email">{{ user.email if user else '' }}</div>
+        </div>
+      </div>
+      <a href="{{ url_for('logout') }}" class="snav-link logout-link">
+        <i class="bi bi-box-arrow-left"></i><span>Sign Out</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="hm-main-wrap">
+
+    <!-- Unified Header / Top Navigation -->
+    <nav class="hm-top-nav">
+      <div class="top-nav-left">
+        <button class="topbar-menu-btn d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#mobileDrawer">
+          <i class="bi bi-list"></i>
+        </button>
+        <div class="nav-title d-none d-md-block">
+          {% if session.admin_id %}Admin Dashboard{% else %}HealthMate Dashboard{% endif %}
+        </div>
+        <a href="{{ url_for('dashboard') }}" class="topbar-logo d-md-none">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="HealthMate" class="topbar-logo-img"/>
+        </a>
+      </div>
+      <div class="top-nav-right">
+        <div class="d-none d-sm-flex gap-2">
+          <span class="badge bg-light text-dark border p-2 rounded-pill px-3">
+            <i class="bi bi-calendar3 me-1"></i> {{ now.strftime('%B %d, %Y') }}
+          </span>
+        </div>
+        <div class="su-avatar" style="width: 32px; height: 32px; font-size: 12px;">{{ user.initials if user else 'AD' }}</div>
+      </div>
+    </nav>
+
+    <!-- Mobile drawer -->
+    <div class="offcanvas offcanvas-start hm-drawer" id="mobileDrawer" tabindex="-1">
+      <div class="offcanvas-header border-bottom py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="HealthMate" style="height:32px;"/>
+          <span class="fw-800" style="font-size: 16px; color: var(--text);">HealthMate</span>
+        </div>
+        <button class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body p-0">
+        <div class="px-4 py-4 mb-2 bg-light border-bottom d-flex align-items-center gap-3">
+          <div class="su-avatar" style="width: 40px; height: 40px; font-size: 16px;">
+            {{ user.initials if user else '?' }}
+          </div>
+          <div class="su-info">
+            <div class="su-name" style="font-size: 14px; color: var(--text);">{{ user.display_name if user else 'Administrator' }}</div>
+            <div class="su-email" style="font-size: 12px;">{{ user.email if user else 'System Admin' }}</div>
+          </div>
+        </div>
+
+        <nav class="drawer-nav">
+          {% if session.admin_id %}
+            <a href="{{ url_for('admin_dashboard') }}" class="dnav-link {% if 'admin_dashboard' in request.endpoint %}active{% endif %}">
+              <i class="bi bi-speedometer2"></i> Admin Panel
+            </a>
+            <a href="{{ url_for('admin_users') }}" class="dnav-link {% if 'admin_users' in request.endpoint %}active{% endif %}">
+              <i class="bi bi-people-fill"></i> Users
+            </a>
+            <a href="{{ url_for('admin_foods') }}" class="dnav-link {% if 'admin_foods' in request.endpoint %}active{% endif %}">
+              <i class="bi bi-egg-fried"></i> Global Foods
+            </a>
+            <a href="{{ url_for('admin_logs') }}" class="dnav-link {% if 'admin_logs' in request.endpoint %}active{% endif %}">
+              <i class="bi bi-terminal"></i> Audit Logs
+            </a>
+          {% else %}
+            <a href="{{ url_for('dashboard') }}" class="dnav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+              <i class="bi bi-grid-fill"></i> Dashboard
+            </a>
+            <a href="{{ url_for('meals') }}" class="dnav-link {% if request.endpoint == 'meals' %}active{% endif %}">
+              <i class="bi bi-journal-richtext"></i> Meals
+            </a>
+            <a href="{{ url_for('reminders') }}" class="dnav-link {% if request.endpoint == 'reminders' %}active{% endif %}">
+              <i class="bi bi-bell-fill"></i> Reminders
+            </a>
+            <a href="{{ url_for('profile') }}" class="dnav-link {% if request.endpoint == 'profile' %}active{% endif %}">
+              <i class="bi bi-person-fill"></i> Profile
+            </a>
+          {% endif %}
+          <div class="drawer-divider"></div>
+          <a href="{{ url_for('logout' if not session.admin_id else 'admin_logout') }}" class="dnav-link text-danger">
+            <i class="bi bi-box-arrow-left"></i> Sign Out
+          </a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Page content -->
+    <main class="hm-main">
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack">
+            {% for cat, msg in messages %}
+              <div class="hm-flash hm-flash-{{ cat }} fade show d-flex align-items-center gap-2" role="alert">
+                {% if cat == 'success' %}<i class="bi bi-check-circle-fill"></i>
+                {% elif cat == 'danger' %}<i class="bi bi-exclamation-circle-fill"></i>
+                {% elif cat == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>
+                {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
+                <span>{{ msg }}</span>
+                <button type="button" class="flash-close ms-auto" onclick="this.parentElement.remove()">
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Mobile bottom nav -->
+    <nav class="hm-bottom-nav d-lg-none">
+      {% if session.admin_id %}
+        <a href="{{ url_for('admin_dashboard') }}" class="bn-item {% if 'admin_dashboard' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-speedometer2"></i><span>Panel</span>
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="bn-item {% if 'admin_users' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-people-fill"></i><span>Users</span>
+        </a>
+        <a href="{{ url_for('admin_foods') }}" class="bn-item {% if 'admin_foods' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-egg-fried"></i><span>Foods</span>
+        </a>
+      {% else %}
+        <a href="{{ url_for('dashboard') }}" class="bn-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+          <i class="bi bi-grid-fill"></i><span>Home</span>
+        </a>
+        <a href="{{ url_for('meals') }}" class="bn-item {% if request.endpoint == 'meals' %}active{% endif %}">
+          <i class="bi bi-journal-richtext"></i><span>Meals</span>
+        </a>
+        <a href="{{ url_for('reminders') }}" class="bn-item bn-item-reminders {% if request.endpoint == 'reminders' %}active{% endif %}">
+          <i class="bi bi-bell"></i><span>Reminders</span>
+        </a>
+        <a href="{{ url_for('profile') }}" class="bn-item {% if request.endpoint == 'profile' %}active{% endif %}">
+          <i class="bi bi-person-fill"></i><span>Profile</span>
+        </a>
+      {% endif %}
+    </nav>
+
+  </div><!-- /.hm-main-wrap -->
+</div><!-- /.hm-app -->
+
+<!-- Reminder notification toast -->
+<div class="reminder-toast-wrap" id="reminderToastWrap"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+<!-- Firebase SDK Setup -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC3umFdXHbj8PF-T07Qnwhn0ybiAEUDPcc",
+    authDomain: "healthmate-b2f79.firebaseapp.com",
+    projectId: "healthmate-b2f79",
+    storageBucket: "healthmate-b2f79.firebasestorage.app",
+    messagingSenderId: "589026138976",
+    appId: "1:589026138976:web:0b6f57a0289f07b0ba5c05"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  // Global logout helper to ensure Firebase session is cleared
+  window.handleFirebaseSignOut = async () => {
+    await signOut(auth);
+    window.location.href = "/logout";
+  };
+
+  // Intercept Login/Register Forms
+  document.addEventListener('DOMContentLoaded', () => {
+    const path = window.location.pathname.toLowerCase();
+    const isRegister = path.includes('register');
+    const isLogin = path.includes('login');
+    
+    if (!isRegister && !isLogin) return;
+
+    // Find the auth form: prioritize action attribute, then look inside the auth wrapper
+    const authForm = document.querySelector('form[action*="login"], form[action*="register"]') 
+                  || document.querySelector('.auth-form-wrap form') 
+                  || document.querySelector('form');
+
+    if (!authForm) return;
+
+    const mode = isRegister ? 'register' : 'login';
+    console.log(`Firebase Auth initialized for ${mode} mode`);
+
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const emailField = authForm.querySelector('[name="email"]');
+      const userField = authForm.querySelector('[name="username"]');
+      const passField = authForm.querySelector('[name="password"]');
+
+      const email = (emailField ? emailField.value : userField?.value || '').trim();
+      const password = passField ? passField.value : '';
+      const username = (userField ? userField.value : '').trim();
+
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+
+      const submitBtn = authForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+
+      try {
+        console.log(`Attempting Firebase ${mode}...`);
+        let userCredential;
+        if (mode === 'register') {
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          userCredential = await signInWithEmailAndPassword(auth, email, password);
+        }
+        
+        console.log("Firebase Auth Success, syncing with backend...");
+        const syncRes = await fetch('/api/auth/firebase-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: userCredential.user.uid,
+            email: userCredential.user.email,
+            username: username || userCredential.user.email.split('@')[0],
+            mode: mode
+          })
+        });
+
+        const syncData = await syncRes.json();
+        if (syncData.success) {
+          window.location.href = syncData.redirect;
+        } else {
+          throw new Error(syncData.error || 'Backend sync failed');
+        }
+
+      } catch (error) {
+        console.error("Auth Error Details:", error.code, error.message);
+        
+        let userMessage = error.message;
+        if (error.code === 'auth/operation-not-allowed') {
+          userMessage = "Email/Password sign-in is not enabled in Firebase Console. Please enable it in the Authentication > Sign-in method tab.";
+        } else if (error.code === 'auth/invalid-email') {
+          userMessage = "Please enter a valid email address.";
+        } else if (error.message.includes('403')) {
+          userMessage = "Security Error (403): This domain is likely not authorized in your Firebase Console. Check Authentication > Settings > Authorized Domains.";
+        }
+        
+        alert(userMessage);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
+  });
+</script>
+
+<script>
+  // Override the Sign Out links to trigger Firebase Signout
+  document.querySelectorAll('a[href*="/logout"]').forEach(link => {
+    if (link.classList.contains('admin-logout')) return; // Keep admin auth separate
+    link.addEventListener('click', (e) => {
+      if (typeof window.handleFirebaseSignOut === 'function') {
+        e.preventDefault();
+        window.handleFirebaseSignOut();
+      }
+    });
+  });
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

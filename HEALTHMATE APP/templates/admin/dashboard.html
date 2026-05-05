@@ -1,0 +1,112 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block admin_content %}
+<div class="page-header align-items-center">
+    <div>
+        <h1 class="page-title" style="font-size: 18px;">Overview</h1>
+        <p class="page-sub d-none d-sm-block">Real-time metrics</p>
+    </div>
+    <a href="{{ url_for('admin_backup') }}" class="btn-hm-primary btn-sm px-2 py-1" style="font-size: 12px;">
+        <i class="bi bi-cloud-arrow-down-fill"></i> Backup
+    </a>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="sc-icon" style="background:#eff6ff;color:#3b82f6;"><i class="bi bi-people-fill"></i></div>
+        <div class="sc-body"><div class="sc-val">{{ stats.users }}</div><div class="sc-label">Total Users</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="sc-icon" style="background:#f0fdf4;color:#22c55e;"><i class="bi bi-person-check-fill"></i></div>
+        <div class="sc-body"><div class="sc-val">{{ stats.active }}</div><div class="sc-label">Active Now</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="sc-icon" style="background:#fff7ed;color:#f97316;"><i class="bi bi-egg-fill"></i></div>
+        <div class="sc-body"><div class="sc-val">{{ stats.meals }}</div><div class="sc-label">Meals Logged</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="sc-icon" style="background:#f5f3ff;color:#8b5cf6;"><i class="bi bi-bell-fill"></i></div>
+        <div class="sc-body"><div class="sc-val">{{ stats.reminders }}</div><div class="sc-label">Active Reminders</div></div>
+    </div>
+</div>
+
+<div class="dashboard-stack">
+    <div class="hm-card mb-3 p-3">
+        <h6 class="card-title mb-3" style="font-size: 14px;">📈 Registration Growth</h6>
+        <div style="height: 220px; width: 100%; position: relative;">
+            <canvas id="userGrowthChart"></canvas>
+        </div>
+    </div>
+
+    <div class="hm-card p-3">
+        <div class="card-header-row mb-2">
+            <h6 class="card-title" style="font-size: 14px;">Recent Logs</h6>
+            <a href="{{ url_for('admin_logs') }}" class="card-link" style="font-size: 10px;">View all →</a>
+        </div>
+        <div class="admin-table">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr style="font-size: 10px;">
+                        <th style="width: 60px;">Time</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs[:5] %}
+                    <tr style="font-size: 12px;">
+                        <td class="text-muted">{{ log.timestamp.strftime('%H:%M') }}</td>
+                        <td class="fw-bold text-truncate" style="max-width: 80px;">{{ log.actor_name }}</td>
+                        <td class="text-truncate">{{ log.action }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    fetchUserGrowthData();
+});
+
+async function fetchUserGrowthData() {
+    try {
+        const response = await fetch('/admin/api/user-growth');
+        const data = await response.json();
+        renderUserGrowthChart(data.labels, data.data);
+    } catch (error) {
+        console.error('Error fetching user growth data:', error);
+    }
+}
+
+function renderUserGrowthChart(labels, data) {
+    const ctx = document.getElementById('userGrowthChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'New Users',
+                data: data,
+                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                borderColor: 'rgba(34, 197, 94, 1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Number of Users' } },
+                x: { title: { display: true, text: 'Date' } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+</script>
+{% endblock %}

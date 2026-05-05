@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}My Profile — HealthMate{% endblock %}
+{% block extra_css %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">👤 My Profile</h1>
+    <p class="page-sub">Update your health details and fitness goals</p>
+  </div>
+  {% if profile %}
+  <a href="{{ url_for('dashboard') }}" class="btn-hm-outline d-none d-sm-flex align-items-center gap-2">
+    <i class="bi bi-grid-fill"></i> Dashboard
+  </a>
+  {% endif %}
+</div>
+
+<div class="profile-layout">
+
+  <!-- ── LEFT: Live Preview Card ── -->
+  <div class="profile-preview">
+    <div class="hm-card">
+
+      <!-- Avatar + Name -->
+      <div class="preview-avatar-row">
+        <div class="preview-avatar" id="preview-initials">
+          {% if profile and profile.full_name %}
+            {{ profile.full_name.split()|map('first')|list|join('')|upper|truncate(2,true,'') }}
+          {% else %}
+            {{ user.username[0].upper() }}
+          {% endif %}
+        </div>
+        <div>
+          <div class="preview-name" id="preview-name">
+            {{ profile.full_name if profile and profile.full_name else user.username }}
+          </div>
+          <div class="preview-goal-chip" id="preview-goal">
+            {% if profile %}
+              {% if profile.goal == 'lose' %}🔥 Lose Weight
+              {% elif profile.goal == 'gain' %}💪 Gain Weight
+              {% else %}⚖ Maintain Weight{% endif %}
+            {% else %}Set your goal →{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="hm-divider mb-3"></div>
+
+      <!-- Live Metrics Grid -->
+      <div class="preview-metrics">
+        <div class="pm-card">
+          <div class="pmc-icon" style="background:#EFF6FF;color:#3B82F6;">⚖</div>
+          <div class="pmc-label">BMI</div>
+          <div class="pmc-val" id="preview-bmi-val">
+            {{ profile.bmi | round | int if profile else '—' }}
+          </div>
+        </div>
+        <div class="pm-card">
+          <div class="pmc-icon" style="background:#F0FDF4;color:#22C55E;">🔥</div>
+          <div class="pmc-label">Daily Goal</div>
+          <div class="pmc-val" id="preview-cal-val">
+            {% if profile %}{{ profile.calorie_target }} <small>kcal</small>{% else %}—{% endif %}
+          </div>
+        </div>
+        <div class="pm-card">
+          <div class="pmc-icon" style="background:#FFF7ED;color:#F97316;">💓</div>
+          <div class="pmc-label">BMR</div>
+          <div class="pmc-val" id="preview-bmr-val">
+            {% if profile %}{{ profile.bmr | int }} <small>kcal</small>{% else %}—{% endif %}
+          </div>
+        </div>
+        <div class="pm-card">
+          <div class="pmc-icon" style="background:#F5F3FF;color:#8B5CF6;">⚡</div>
+          <div class="pmc-label">TDEE</div>
+          <div class="pmc-val" id="preview-tdee-val">
+            {% if profile %}{{ profile.tdee | int }} <small>kcal</small>{% else %}—{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- BMI category pill -->
+      <div class="text-center mt-2">
+        {% set cat, col, bg = 'Complete the form', '#94A3B8', '#F8FAFC' %}
+        {% if profile and profile.bmi > 0 %}
+          {% if profile.bmi < 18.5 %}
+            {% set cat, col, bg = 'Underweight', '#3B82F6', '#EFF6FF' %}
+          {% elif profile.bmi < 25 %}
+            {% set cat, col, bg = 'Normal', '#22C55E', '#F0FDF4' %}
+          {% elif profile.bmi < 30 %}
+            {% set cat, col, bg = 'Overweight', '#F59E0B', '#FFFBEB' %}
+          {% else %}
+            {% set cat, col, bg = 'Obese', '#EF4444', '#FEF2F2' %}
+          {% endif %}
+        {% endif %}
+        <span class="bmi-pill" id="preview-bmi-cat"
+              style="background:{{ bg }}; color:{{ col }};">{{ cat }}</span>
+      </div>
+      {% if profile %}
+      <div class="hm-divider mt-3 mb-3"></div>
+      <!-- Current stats summary -->
+      <div class="profile-summary">
+        <div class="ps-row"><span>Height</span><strong>{{ profile.height | round | int }} cm</strong></div>
+        <div class="ps-row"><span>Weight</span><strong>{{ profile.weight | round | int }} kg</strong></div>
+        <div class="ps-row"><span>Age</span><strong>{{ profile.age | int }} years</strong></div>
+        <div class="ps-row"><span>Gender</span><strong>{{ profile.gender | title }}</strong></div>
+        <div class="ps-row"><span>Activity</span><strong>{{ profile.activity_level | title }}</strong></div>
+      </div>
+      {% endif %}
+    </div>
+ 
+    <!-- Calculation legend -->
+    <div class="hm-card mt-4" style="background:#F8FAFC;">
+      <h6 class="card-title mb-3" style="font-size:12px;">🧮 How we calculate</h6>
+      <div class="bd-row" style="padding:6px 0;font-size:12px;">
+        <span>BMI</span><strong style="font-family:monospace;">w / h²</strong>
+      </div>
+      <div class="bd-row" style="padding:6px 0;font-size:12px;">
+        <span>BMR</span><strong style="font-family:monospace;">Mifflin-St Jeor</strong>
+      </div>
+      <div class="bd-row" style="padding:6px 0;font-size:12px;">
+        <span>TDEE</span><strong style="font-family:monospace;">BMR × activity</strong>
+      </div>
+      <div class="bd-row" style="padding:6px 0;font-size:12px;border:none;">
+        <span>Goal</span><strong style="font-family:monospace;">TDEE ± adjustment</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: Profile Form ── -->
+  <div>
+    <div class="hm-card">
+      <h5 class="card-title mb-1">Personal Information</h5>
+      <p style="font-size:12px;color:#94A3B8;margin-bottom:20px;">
+        Fields marked <span style="color:#EF4444;">*</span> are required
+      </p>
+
+      <form method="POST" action="{{ url_for('profile') }}" id="profileForm">
+
+        <!-- Full Name -->
+        <div class="hm-field">
+          <label class="hm-label">Full Name</label>
+          <input type="text" name="full_name" class="hm-input"
+                 placeholder="Your full name"
+                 value="{{ profile.full_name if profile and profile.full_name else '' }}"/>
+        </div>
+
+        <div class="row g-3 mb-0">
+          <!-- Age -->
+          <div class="col-sm-6">
+            <div class="hm-field mb-0">
+              <label class="hm-label">Age <span style="color:#EF4444;">*</span></label>
+              <input type="number" name="age" class="hm-input calc-trigger"
+                     placeholder="e.g. 25" min="10" max="120" required
+                     value="{{ profile.age if profile and profile.age else '' }}"/>
+            </div>
+          </div>
+          <!-- Gender -->
+          <div class="col-sm-6">
+            <div class="hm-field mb-0">
+              <label class="hm-label">Gender <span style="color:#EF4444;">*</span></label>
+              <select name="gender" class="hm-select calc-trigger" required>
+                <option value="">Select gender</option>
+                <option value="male"
+                  {% if profile and profile.gender == 'male' %}selected{% endif %}>Male</option>
+                <option value="female"
+                  {% if profile and profile.gender == 'female' %}selected{% endif %}>Female</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-0">
+          <!-- Height -->
+          <div class="col-sm-6">
+            <div class="hm-field">
+              <label class="hm-label">Height (cm) <span style="color:#EF4444;">*</span></label>
+              <div class="hm-input-wrap">
+                <input type="number" name="height" class="hm-input calc-trigger"
+                       placeholder="e.g. 172" min="50" max="280" step="0.1" required
+                       value="{{ profile.height if profile and profile.height else '' }}"/>
+                <span class="hm-input-icon" style="left:auto;right:12px;font-size:12px;font-weight:600;color:#94A3B8;">cm</span>
+              </div>
+            </div>
+          </div>
+          <!-- Weight -->
+          <div class="col-sm-6">
+            <div class="hm-field">
+              <label class="hm-label">Weight (kg) <span style="color:#EF4444;">*</span></label>
+              <div class="hm-input-wrap">
+                <input type="number" name="weight" class="hm-input calc-trigger"
+                       placeholder="e.g. 68" min="20" max="500" step="0.1" required
+                       value="{{ profile.weight if profile and profile.weight else '' }}"/>
+                <span class="hm-input-icon" style="left:auto;right:12px;font-size:12px;font-weight:600;color:#94A3B8;">kg</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hm-divider mb-4"></div>
+
+        <!-- Activity Level -->
+        <div class="hm-field">
+          <label class="hm-label">Activity Level <span style="color:#EF4444;">*</span></label>
+          <div class="activity-grid">
+            {% for val, icon, label, desc in [
+              ('sedentary', '🛋', 'Sedentary',  'Little / no exercise'),
+              ('light',     '🚶', 'Light',       '1–3 days/week'),
+              ('moderate',  '🏃', 'Moderate',    '3–5 days/week'),
+              ('active',    '💪', 'Active',      '6–7 days/week'),
+              ('athlete',   '🏋', 'Athlete',     'Intense daily training'),
+            ] %}
+            <label class="act-card {% if profile and profile.activity_level == val %}selected{% endif %}">
+              <input type="radio" name="activity_level" value="{{ val }}"
+                     class="calc-trigger visually-hidden"
+                     {% if profile and profile.activity_level == val %}checked{% endif %}
+                     required/>
+              <span class="act-icon">{{ icon }}</span>
+              <span class="act-label">{{ label }}</span>
+              <span class="act-desc">{{ desc }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Fitness Goal -->
+        <div class="hm-field">
+          <label class="hm-label">Fitness Goal <span style="color:#EF4444;">*</span></label>
+          <div class="goal-grid">
+            {% for val, icon, label, bg in [
+              ('lose',     '🔥', 'Lose Weight',     '#FEF2F2'),
+              ('maintain', '⚖',  'Maintain Weight', '#F0FDF4'),
+              ('gain',     '💪', 'Gain Weight',     '#EFF6FF'),
+            ] %}
+            <label class="goal-card {% if profile and profile.goal == val %}selected{% endif %}"
+                   style="--goal-bg:{{ bg }};">
+              <input type="radio" name="goal" value="{{ val }}"
+                     class="calc-trigger visually-hidden"
+                     {% if profile and profile.goal == val %}checked{% endif %}
+                     required/>
+              <span class="goal-icon">{{ icon }}</span>
+              <span class="goal-label">{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="d-flex gap-3 mt-2">
+          <button type="submit" class="btn-hm-primary flex-fill" style="padding:13px;">
+            <i class="bi bi-check2-circle me-1"></i> Save Profile
+          </button>
+          {% if profile %}
+          <a href="{{ url_for('dashboard') }}" class="btn-hm-outline flex-fill"
+             style="padding:13px;text-align:center;justify-content:center;">
+            View Dashboard
+          </a>
+          {% endif %}
+        </div>
+
+      </form>
+    </div>
+
+    <!-- Account info card -->
+    <div class="hm-card mt-4">
+      <div class="card-header-row">
+        <h6 class="card-title mb-0">🔐 Account Info</h6>
+      </div>
+      <div class="profile-summary">
+        <div class="ps-row">
+          <span>Username</span>
+          <strong>@{{ user.username }}</strong>
+        </div>
+        <div class="ps-row">
+          <span>Email</span>
+          <strong>{{ user.email }}</strong>
+        </div>
+        <div class="ps-row">
+          <span>Member since</span>
+          <strong>{{ user.created_at.strftime('%B %d, %Y') if user.created_at else '—' }}</strong>
+        </div>
+        {% if profile and profile.updated_at %}
+        <div class="ps-row">
+          <span>Profile updated</span>
+          <strong>{{ profile.updated_at.strftime('%B %d, %Y') }}</strong>
+        </div>
+        {% endif %}
+      </div>
+      <div class="mt-3">
+        <a href="{{ url_for('logout') }}"
+           class="btn-hm-outline w-100 text-center"
+           style="color:#EF4444;border-color:#FECACA;"
+           onclick="return confirm('Sign out of HealthMate?')">
+          <i class="bi bi-box-arrow-left me-1"></i> Sign Out
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /.profile-layout -->
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+{% endblock %}

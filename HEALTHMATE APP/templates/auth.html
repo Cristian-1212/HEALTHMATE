@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% if mode == 'login' %}Sign In{% elif mode == 'register' %}Create Account{% else %}Reset Password{% endif %} — HealthMate</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"/>
+</head>
+<body class="auth-page">
+
+<div class="auth-split">
+  <!-- Left panel — branding -->
+  <div class="auth-brand-panel d-none d-lg-flex">
+    <div class="abp-content">
+      <img src="{{ url_for('static', filename='images/logo.png') }}"
+           alt="HealthMate" class="auth-logo-lg"/>
+      <h2 class="abp-tagline">Track smarter.<br/>Live healthier.</h2>
+      <p class="abp-sub">BMI tracking, smart calorie goals, AI-powered food suggestions, and reminders — all in one place.</p>
+      <div class="abp-features">
+        <div class="abp-feat"><i class="bi bi-activity"></i> Real-time BMI & calorie tracking</div>
+        <div class="abp-feat"><i class="bi bi-lightbulb-fill"></i> Smart Meal Logging System</div>
+        <div class="abp-feat"><i class="bi bi-bell-fill"></i> Smart meal & medicine reminders</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel — form -->
+  <div class="auth-form-panel">
+    <div class="auth-form-wrap">
+      <!-- Mobile logo -->
+      <div class="d-lg-none text-center mb-4">
+        <img src="{{ url_for('static', filename='images/logo.png') }}"
+             alt="HealthMate" style="height:52px;"/>
+      </div>
+
+      <h1 class="auth-title">
+        {% if mode == 'login' %}Welcome back 👋{% elif mode == 'register' %}Create your account 🎉{% else %}Reset password 🔑{% endif %}
+      </h1>
+      <p class="auth-subtitle">
+        {% if mode == 'login' %}Sign in to your HealthMate account
+        {% elif mode == 'register' %}Start your health journey today
+        {% else %}Enter your details to set a new password{% endif %}
+      </p>
+
+      <!-- Tab switch -->
+      <div class="auth-tabs">
+        <a href="{{ url_for('login') }}"
+           class="auth-tab {% if mode == 'login' %}active{% endif %}">Sign In</a>
+        <a href="{{ url_for('register') }}"
+           class="auth-tab {% if mode == 'register' %}active{% endif %}">Register</a>
+      </div>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div class="hm-flash hm-flash-{{ cat }} mb-3 d-flex align-items-center gap-2">
+              {% if cat == 'success' %}<i class="bi bi-check-circle-fill"></i>
+              {% elif cat == 'danger' %}<i class="bi bi-exclamation-circle-fill"></i>
+              {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
+              <span>{{ msg }}</span>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% if mode == 'login' %}
+      <form method="POST" action="{{ url_for('login') }}" autocomplete="on">
+        <div class="hm-field">
+          <label class="hm-label">Username</label>
+          <div class="hm-input-wrap">
+            <i class="bi bi-person hm-input-icon"></i>
+            <input type="text" name="username" class="hm-input hm-input-iconed"
+                   placeholder="Enter your username" required autofocus autocomplete="username"/>
+          </div>
+        </div>
+        <div class="hm-field">
+          <label class="hm-label">Password</label>
+          <div class="hm-input-wrap">
+            <i class="bi bi-lock hm-input-icon"></i>
+            <input type="password" name="password" id="pw1" class="hm-input hm-input-iconed"
+                   placeholder="••••••••" required autocomplete="current-password"/>
+            <button type="button" class="hm-pw-toggle" onclick="togglePw('pw1',this)">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="text-end mb-3">
+          <a href="{{ url_for('reset_password') }}" class="text-muted small">Forgot password?</a>
+        </div>
+        <button type="submit" class="btn-hm-primary w-100 mt-1">
+          Sign In <i class="bi bi-arrow-right-short ms-1"></i>
+        </button>
+      </form>
+
+      {% elif mode == 'register' %}
+      <form method="POST" action="{{ url_for('register') }}" autocomplete="off">
+        <div class="hm-field">
+          <label class="hm-label">Username</label>
+          <div class="hm-input-wrap">
+            <i class="bi bi-person hm-input-icon"></i>
+            <input type="text" name="username" class="hm-input hm-input-iconed"
+                   placeholder="Choose a username" required autofocus/>
+          </div>
+        </div>
+        <div class="hm-field">
+          <label class="hm-label">Email Address</label>
+          <div class="hm-input-wrap">
+            <i class="bi bi-envelope hm-input-icon"></i>
+            <input type="email" name="email" class="hm-input hm-input-iconed"
+                   placeholder="you@example.com" required/>
+          </div>
+        </div>
+        <div class="hm-field">
+          <label class="hm-label">Password</label>
+          <div class="hm-input-wrap">
+            <i class="bi bi-lock hm-input-icon"></i>
+            <input type="password" name="password" id="pw2" class="hm-input hm-input-iconed"
+                   placeholder="Min. 6 characters" required minlength="6"/>
+            <button type="button" class="hm-pw-toggle" onclick="togglePw('pw2',this)">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn-hm-primary w-100 mt-1">
+          Create Account <i class="bi bi-arrow-right-short ms-1"></i>
+        </button>
+      </form>
+
+      {% else %}
+      <form method="POST" action="{{ url_for('reset_password') }}" autocomplete="off">
+        <div class="hm-field">
+          <label class="hm-label">Username</label>
+          <div class="hm-input-wrap">
+            <i class="bi bi-person hm-input-icon"></i>
+            <input type="text" name="username" class="hm-input hm-input-iconed"
+                   placeholder="Enter your username" required autofocus/>
+          </div>
+        </div>
+        <div class="hm-field">
+          <label class="hm-label">Email Address</label>
+          <div class="hm-input-wrap">
+            <i class="bi bi-envelope hm-input-icon"></i>
+            <input type="email" name="email" class="hm-input hm-input-iconed"
+                   placeholder="you@example.com" required/>
+          </div>
+        </div>
+        <div class="hm-field">
+          <label class="hm-label">New Password</label>
+          <div class="hm-input-wrap">
+            <i class="bi bi-lock hm-input-icon"></i>
+            <input type="password" name="password" id="pw3" class="hm-input hm-input-iconed"
+                   placeholder="Min. 6 characters" required minlength="6"/>
+            <button type="button" class="hm-pw-toggle" onclick="togglePw('pw3',this)">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn-hm-primary w-100 mt-1">
+          Reset Password <i class="bi bi-arrow-right-short ms-1"></i>
+        </button>
+      </form>
+      {% endif %}
+
+      <p class="auth-switch-text">
+        {% if mode == 'login' %}
+          Don't have an account? <a href="{{ url_for('register') }}">Register free</a>
+        {% elif mode == 'register' %}
+          Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+        {% else %}
+          Remembered your password? <a href="{{ url_for('login') }}">Sign in</a>
+        {% endif %}
+      </p>
+
+      <div class="text-center mt-4 pt-3 border-top">
+        <a href="{{ url_for('admin_login') }}" class="text-muted small"><i class="bi bi-shield-lock me-1"></i> Admin Portal</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+<!-- Firebase SDK Setup -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC3umFdXHbj8PF-T07Qnwhn0ybiAEUDPcc",
+    authDomain: "healthmate-b2f79.firebaseapp.com",
+    projectId: "healthmate-b2f79",
+    storageBucket: "healthmate-b2f79.firebasestorage.app",
+    messagingSenderId: "589026138976",
+    appId: "1:589026138976:web:0b6f57a0289f07b0ba5c05"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  // Intercept Login/Register Forms
+  document.addEventListener('DOMContentLoaded', () => {
+    const authForm = document.querySelector('.auth-form-wrap form');
+    if (!authForm) return;
+
+    const path = window.location.pathname.toLowerCase();
+    const mode = path.includes('register') ? 'register' : 'login';
+    console.log(`Firebase Auth initialized for ${mode} mode`);
+
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const emailField = authForm.querySelector('[name="email"]');
+      const userField = authForm.querySelector('[name="username"]');
+      const passField = authForm.querySelector('[name="password"]');
+
+      const email = (emailField ? emailField.value : userField?.value || '').trim();
+      const password = passField ? passField.value : '';
+      const username = (userField ? userField.value : '').trim();
+
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+
+      const submitBtn = authForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+
+      try {
+        console.log(`Attempting Firebase ${mode}...`);
+        let userCredential;
+        if (mode === 'register') {
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          userCredential = await signInWithEmailAndPassword(auth, email, password);
+        }
+        
+        console.log("Firebase Auth Success, syncing with backend...");
+        const syncRes = await fetch('/api/auth/firebase-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: userCredential.user.uid,
+            email: userCredential.user.email,
+            username: username || userCredential.user.email.split('@')[0],
+            mode: mode
+          })
+        });
+
+        const syncData = await syncRes.json();
+        if (syncData.success) {
+          window.location.href = syncData.redirect;
+        } else {
+          throw new Error(syncData.error || 'Backend sync failed');
+        }
+
+      } catch (error) {
+        console.error("Auth Error Details:", error.code, error.message);
+        let userMessage = error.message;
+        if (error.code === 'auth/operation-not-allowed') {
+          userMessage = "Email/Password sign-in is not enabled in Firebase Console. Please enable it in the Authentication tab.";
+        } else if (error.code === 'auth/invalid-email') {
+          userMessage = "Please enter a valid email address.";
+        } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+          userMessage = "Invalid email or password.";
+        }
+        
+        alert(userMessage);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
+  });
+</script>
+
+<script>
+function togglePw(id, btn) {
+  const inp = document.getElementById(id);
+  const hide = inp.type === 'password';
+  inp.type = hide ? 'text' : 'password';
+  btn.innerHTML = hide ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+}
+</script>
+</body>
+</html>
