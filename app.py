@@ -658,8 +658,7 @@ def dashboard():
         net_balance=int(net_balance),
         forecast=forecast,
         goal_label=goal_labels.get(prof.goal, 'Health Goal'),
-        today=today.strftime('%A, %B %d, %Y'),
-        today=today.strftime('%A, %B %d, %Y'),
+        today=today.strftime('%A, %B %d'),
     )
 
 # ══════════════════════════════════════════════════════
