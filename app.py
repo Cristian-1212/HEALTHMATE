@@ -250,8 +250,10 @@ class BackupService:
     @staticmethod
     def perform_backup(admin_id):
         """Generates a JSON dump of the entire system state."""
-        if not os.path.exists('backups'):
-            os.makedirs('backups')
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        backup_dir = os.path.join(base_dir, 'backups')
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
 
         data = {
             'users': [dict(id=u.id, username=u.username, email=u.email, role=u.role) for u in User.query.all()],
@@ -259,9 +261,8 @@ class BackupService:
             'audit_logs': [dict(actor=l.actor_name, action=l.action, ts=l.timestamp.isoformat()) for l in AuditLog.query.all()]
         }
         
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"backup_{timestamp}.json"
-        dest_path = os.path.join('backups', filename)
+        filename = "backup.json"
+        dest_path = os.path.join(backup_dir, filename)
         
         with open(dest_path, 'w') as f:
             json.dump(data, f)
@@ -889,6 +890,17 @@ def admin_backup():
     log_activity(f"System Backup created: {backup_file}", session['admin_id'], "Admin")
     flash(f"Backup created: {backup_file}", "success")
     return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/backup/download')
+@admin_required
+def admin_backup_download():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    backup_path = os.path.join(base_dir, 'backups', 'backup.json')
+    if not os.path.exists(backup_path):
+        flash("Backup file does not exist. Please generate a backup first.", "danger")
+        return redirect(url_for('admin_dashboard'))
+    
+    return send_file(backup_path, as_attachment=True, download_name='backup.json')
 
 @app.route('/admin/restore', methods=['GET', 'POST'])
 @role_required(['superadmin'])
